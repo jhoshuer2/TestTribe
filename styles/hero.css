@@ -1,0 +1,333 @@
+.page {
+  height: 100dvh;
+  overflow: hidden;
+  position: relative;
+  background: var(--color-bg);
+}
+
+/* ---------- logo + preloader ---------- */
+.preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--color-bg);
+  transition: opacity var(--t-move) var(--ease-in-out);
+  pointer-events: none;
+}
+.page:not([data-phase="intro"]) .preloader {
+  opacity: 0;
+}
+
+.logo {
+  position: fixed;
+  z-index: 50;
+  --w0: min(460px, 62vw);
+  height: auto;
+  /* start: large and centred */
+  width: var(--w0);
+  left: calc(50vw - var(--w0) / 2);
+  top: calc(50dvh - var(--w0) / 3.94);
+  opacity: 0;
+  animation: logo-in var(--t-intro) ease-out 0.2s forwards;
+  transition:
+    left var(--t-move) var(--ease-in-out),
+    top var(--t-move) var(--ease-in-out),
+    width var(--t-move) var(--ease-in-out);
+}
+/* end: top-left of the header */
+.page:not([data-phase="intro"]) .logo {
+  width: calc(205 * var(--u));
+  left: var(--pad-x);
+  top: calc(26 * var(--u));
+}
+@keyframes logo-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- frame ---------- */
+.header {
+  height: var(--header-h);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.stage {
+  display: grid;
+  grid-template-columns: var(--col-left) 1fr;
+  height: calc(100dvh - var(--header-h));
+}
+
+.intro {
+  padding: calc(38 * var(--u)) var(--pad-x) 0;
+}
+.intro__title {
+  margin: 0;
+  white-space: nowrap;
+  font-size: var(--fs-display);
+  line-height: var(--lh-display);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  color: var(--color-ink);
+}
+.intro__nav {
+  display: flex;
+  flex-direction: column;
+  margin-top: calc(12 * var(--u));
+}
+.intro__link {
+  font-size: var(--fs-nav);
+  line-height: var(--lh-nav);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  color: var(--color-vermillion);
+  text-decoration: none;
+  width: fit-content;
+}
+.intro__link:focus-visible {
+  outline: 2px solid var(--color-vermillion);
+  outline-offset: 4px;
+}
+
+/* reveal once the logo is on its way */
+.intro__title,
+.intro__link,
+.panel {
+  opacity: 0;
+  transform: translateY(calc(16 * var(--u)));
+  transition:
+    opacity var(--t-reveal) ease-out,
+    transform var(--t-reveal) ease-out;
+}
+.page:not([data-phase="intro"]) .intro__title,
+.page:not([data-phase="intro"]) .intro__link,
+.page:not([data-phase="intro"]) .panel {
+  opacity: 1;
+  transform: none;
+}
+.page:not([data-phase="intro"]) .intro__title {
+  transition-delay: 2.5s;
+}
+.page:not([data-phase="intro"]) .intro__link:nth-child(1) { transition-delay: 2.8s; }
+.page:not([data-phase="intro"]) .intro__link:nth-child(2) { transition-delay: 2.95s; }
+.page:not([data-phase="intro"]) .intro__link:nth-child(3) { transition-delay: 3.1s; }
+.page:not([data-phase="intro"]) .panel {
+  transition-delay: 1.2s;
+}
+
+/* ---------- panel: code texture, globe, legend ---------- */
+.panel {
+  position: relative;
+  overflow: hidden;
+  border-left: 1px solid var(--color-line-soft);
+  cursor: grab;
+}
+
+.texture {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.texture__track {
+  animation: code-scroll 70s linear infinite;
+  will-change: transform;
+}
+.texture__tile {
+  display: block;
+  width: calc(517 * 3 * var(--u));
+  height: calc(467 * 3 * var(--u));
+  user-select: none;
+}
+@keyframes code-scroll {
+  to {
+    transform: translateY(calc(-467 * 3 * var(--u)));
+  }
+}
+.panel:hover .texture__track {
+  animation-play-state: paused;
+}
+
+/* Sphere is larger than the panel and cropped by it (diameter 1480u, centre ~(1290u, 900u) in the reference frame). */
+.globe {
+  position: absolute;
+  left: calc(-50 * var(--u));
+  top: calc(8 * var(--u));
+  width: calc(1480 * var(--u));
+  aspect-ratio: 1;
+}
+.globe__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* event pins: positioned by Globe.tsx via transform */
+.pin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  z-index: 2;
+  will-change: transform, opacity;
+}
+.pin:hover {
+  z-index: 20;
+}
+.pin__dot {
+  position: absolute;
+  width: calc(26 * var(--u));
+  height: calc(26 * var(--u));
+  margin: calc(-13 * var(--u));
+  border-radius: 50%;
+  background: var(--color-vermillion);
+  cursor: pointer;
+  transition: transform 0.2s ease-out;
+}
+/* larger invisible hit area */
+.pin__dot::after {
+  content: "";
+  position: absolute;
+  inset: calc(-10 * var(--u));
+  border-radius: 50%;
+}
+.pin:hover .pin__dot {
+  transform: scale(1.25);
+}
+.pin__card {
+  --shift: 0px;
+  position: absolute;
+  left: 0;
+  bottom: calc(24 * var(--u));
+  width: calc(240 * var(--u));
+  transform: translate(calc(-50% + var(--shift)), calc(8 * var(--u)));
+  padding: calc(8 * var(--u));
+  background: #fff;
+  border-radius: calc(10 * var(--u));
+  box-shadow: 0 calc(12 * var(--u)) calc(32 * var(--u)) rgba(30, 30, 30, 0.16);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.2s ease-out,
+    transform 0.2s ease-out,
+    visibility 0.2s;
+}
+.pin:hover .pin__card {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(calc(-50% + var(--shift)), 0);
+}
+.pin__img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 11 / 7;
+  object-fit: cover;
+  border-radius: calc(6 * var(--u));
+  background: #e6e6e6;
+}
+.pin__name {
+  margin: calc(10 * var(--u)) calc(4 * var(--u)) calc(4 * var(--u));
+  font-size: calc(20 * var(--u));
+  line-height: 1.2;
+  font-weight: 500;
+  color: var(--color-ink-strong);
+}
+
+/* legend */
+.legend {
+  position: absolute;
+  right: calc(52 * var(--u));
+  bottom: calc(76 * var(--u));
+  width: calc(255 * var(--u));
+  height: calc(420 * var(--u));
+  margin: 0;
+  padding: 0 0 0 calc(22 * var(--u));
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-block: calc(26 * var(--u)) calc(30 * var(--u));
+  background: rgba(245, 245, 245, 0.92);
+  z-index: 3;
+  pointer-events: none;
+  font-size: var(--fs-stat);
+  font-weight: 400;
+  color: var(--color-ink-strong);
+}
+.legend__item {
+  display: flex;
+  align-items: center;
+  gap: calc(22 * var(--u));
+}
+.legend__dot {
+  flex: none;
+  width: calc(24 * var(--u));
+  height: calc(24 * var(--u));
+  border-radius: 50%;
+  background: var(--color-neutral-dot);
+  margin-inline: calc(2 * var(--u));
+}
+.legend__dot--accent {
+  background: var(--color-vermillion-deep);
+  box-shadow: 0 0 0 calc(14 * var(--u)) var(--color-vermillion-halo);
+  margin-inline: calc(14 * var(--u)) calc(14 * var(--u));
+}
+
+/* nav hover overlay */
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: calc(16 * var(--u));
+  padding: 0 calc(90 * var(--u));
+  background: rgba(243, 243, 243, 0.94);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease-out;
+}
+.overlay--on {
+  opacity: 1;
+}
+.overlay__kicker {
+  margin: 0;
+  font-size: calc(96 * var(--u));
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  color: var(--color-vermillion);
+}
+.overlay__body {
+  margin: 0;
+  max-width: calc(620 * var(--u));
+  font-size: calc(30 * var(--u));
+  line-height: 1.3;
+  color: var(--color-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .texture__track {
+    animation: none;
+  }
+  .logo {
+    animation: none;
+    opacity: 1;
+    transition: none;
+  }
+  .intro__title,
+  .intro__link,
+  .panel {
+    transition: none;
+  }
+}

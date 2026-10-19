@@ -1,12 +1,47 @@
-/* Design tokens — populated from the reference hero once shared. */
+/* Design tokens, sampled from the hero reference (design/reference/hero.webp).
+   --u is the layout unit: 1px at the 1869px-wide reference, scaling with viewport width. */
 :root {
-  --color-bg: #ffffff;
-  --color-fg: #111111;
-  --font-sans: system-ui, sans-serif;
+  /* color */
+  --color-bg: #f3f3f3;
+  --color-surface: #f5f5f5;
+  --color-ink: #2c2c2c;
+  --color-ink-strong: #1e1e1e;
+  --color-vermillion: #f76e51;
+  --color-vermillion-deep: #e34a2e;
+  --color-vermillion-halo: #f2e0dd;
+  --color-neutral-dot: #99a1a8;
+  --color-line: #abb0bc;
+  --color-line-soft: #bec1c9;
+
+  /* type */
+  --font-sans: "Bricolage Grotesque Variable", system-ui, sans-serif;
+  --fs-display: calc(56 * var(--u));
+  --lh-display: calc(67 * var(--u));
+  --fs-nav: calc(46 * var(--u));
+  --lh-nav: calc(68 * var(--u));
+  --fs-stat: calc(26 * var(--u));
+
+  /* layout */
+  --u: calc(100vw / 1869);
+  --header-h: calc(150 * var(--u));
+  --col-left: calc(600 * var(--u));
+  --pad-x: calc(68 * var(--u));
+
+  /* motion */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --t-intro: 1s;
+  --t-move: 3.6s;
+  --t-reveal: 1.4s;
 }
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   background: var(--color-bg);
-  color: var(--color-fg);
+  color: var(--color-ink);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
