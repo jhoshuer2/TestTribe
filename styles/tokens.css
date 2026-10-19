@@ -1,0 +1,12 @@
+/* Design tokens — populated from the reference hero once shared. */
+:root {
+  --color-bg: #ffffff;
+  --color-fg: #111111;
+  --font-sans: system-ui, sans-serif;
+}
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+}
