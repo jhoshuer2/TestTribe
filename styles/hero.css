@@ -154,12 +154,12 @@
   animation-play-state: paused;
 }
 
-/* Sphere is larger than the panel and cropped by it (diameter 1480u, centre ~(1290u, 900u) in the reference frame). */
+/* Hemisphere rising from the bottom of the panel, as in the reference (diameter 1240u, centred). */
 .globe {
   position: absolute;
-  left: calc(-50 * var(--u));
-  top: calc(8 * var(--u));
-  width: calc(1480 * var(--u));
+  left: calc(-39 * var(--u));
+  top: calc(34 * var(--u));
+  width: calc(1348 * var(--u));
   aspect-ratio: 1;
 }
 .globe__canvas {
@@ -189,8 +189,22 @@
   margin: calc(-13 * var(--u));
   border-radius: 50%;
   background: var(--color-vermillion);
+  border: calc(3 * var(--u)) solid rgba(255, 236, 228, 0.9);
+  box-shadow: 0 0 calc(22 * var(--u)) calc(6 * var(--u)) rgba(247, 110, 81, 0.65);
   cursor: pointer;
   transition: transform 0.2s ease-out;
+}
+.pin__dot::before {
+  content: "";
+  position: absolute;
+  inset: calc(-3 * var(--u));
+  border-radius: 50%;
+  border: 1px solid var(--color-vermillion);
+  animation: pin-ping 2.4s ease-out infinite;
+}
+@keyframes pin-ping {
+  from { transform: scale(1); opacity: 0.9; }
+  to { transform: scale(2.6); opacity: 0; }
 }
 /* larger invisible hit area */
 .pin__dot::after {
@@ -256,12 +270,14 @@
   flex-direction: column;
   justify-content: space-between;
   padding-block: calc(26 * var(--u)) calc(30 * var(--u));
-  background: rgba(245, 245, 245, 0.92);
+  background: rgba(24, 16, 15, 0.62);
+  backdrop-filter: blur(10px);
+  border-radius: calc(18 * var(--u));
   z-index: 3;
   pointer-events: none;
   font-size: var(--fs-stat);
   font-weight: 400;
-  color: var(--color-ink-strong);
+  color: #f6ece8;
 }
 .legend__item {
   display: flex;
@@ -278,7 +294,7 @@
 }
 .legend__dot--accent {
   background: var(--color-vermillion-deep);
-  box-shadow: 0 0 0 calc(14 * var(--u)) var(--color-vermillion-halo);
+  box-shadow: 0 0 0 calc(14 * var(--u)) rgba(247, 110, 81, 0.28);
   margin-inline: calc(14 * var(--u)) calc(14 * var(--u));
 }
 
@@ -318,7 +334,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .texture__track {
+  .texture__track,
+  .pin__dot::before {
     animation: none;
   }
   .logo {

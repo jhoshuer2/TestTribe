@@ -7,34 +7,30 @@ import land110 from "world-atlas/land-110m.json";
 import type { TribeEvent } from "../lib/events";
 
 const D2R = Math.PI / 180;
-const STEP_LAT = 1.8; // lattice spacing in degrees
-const STEP_LON = 3.6;
-const GRATICULE = 15;
-const colSin = new Float32Array(Math.round(360 / 3.6));
-const colCos = new Float32Array(Math.round(360 / 3.6));
-// The reference shows the whole world across one disc, so longitude is compressed:
-// the sphere's visible half spans 360° of longitude. Spinning wraps continuously.
-const LON_K = 0.5;
-const START = { lon: 5, lat: 12 };
+const STEP = 1.7; // dot spacing in degrees (equal-area lattice)
+const START = { lon: 55, lat: 32 };
 const SPIN = 14; // degrees of longitude per second while hovered
+const ARCS: [number, number][] = [
+  [0, 2],
+  [1, 3],
+];
 
-type Pt = { sinLat: number; cosLat: number; col: number; glyph: string; grat: boolean };
+// Brand colours as RGB triples (tokens.css: --color-vermillion et al.)
+const VERM = [247, 110, 81];
+const VERM_LIGHT = [255, 168, 142];
+const CREAM = [255, 233, 224];
 
-const COLS = Math.round(360 / STEP_LON);
-const colLon = (c: number) => -180 + c * STEP_LON;
+// Major hubs that get a soft glow, like the lit clusters in the reference.
+const HUBS: [number, number][] = [
+  [51.5, -0.1], [48.9, 2.3], [52.5, 13.4], [41, 29], [55.7, 37.6], [30, 31.2], [25.2, 55.3],
+  [28.6, 77.2], [19.1, 72.9], [13, 77.6], [23.8, 90.4], [1.35, 103.8], [39.9, 116.4], [31.2, 121.5],
+  [35.7, 139.7], [37.6, 127], [-1.3, 36.8], [6.5, 3.4], [-26.2, 28], [40.7, -74], [34, -118.2],
+  [19.4, -99.1], [-23.5, -46.6], [-33.9, 151.2],
+];
 
-// Glyph per region, echoing the reference globe.
-function glyphFor(lon: number, lat: number): string {
-  if (lat < -60) return "=";
-  if (lat > 36 && lon > -25 && lon < 45) return "*";
-  if (lon < -30 && lat > 12) return "^";
-  if (lon < -30) return "+";
-  if (lon > -20 && lon < 52 && lat > -36 && lat < 37 && !(lon > 34 && lat > 13)) return "#";
-  if ((lon >= 112 && lat < -10) || (lon >= 95 && lon <= 155 && lat <= 7 && lat >= -10) || (lon >= 155 && lat < 0)) return "%";
-  return "@";
-}
+type Dot = { x: number; y: number; z: number; shade: number; tw: number };
 
-function buildLattice(): Promise<Pt[]> {
+function buildDots(): Dot[] {
   const W = 1440;
   const H = 720;
   const c = document.createElement("canvas");
@@ -55,37 +51,32 @@ function buildLattice(): Promise<Pt[]> {
     return data[(y * W + x) * 4 + 3] > 128;
   };
 
-  const pts: Pt[] = [];
-  for (let lat = -88; lat <= 88; lat += STEP_LAT) {
+  const dots: Dot[] = [];
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let lat = -80; lat <= 84; lat += STEP) {
     const cosLat = Math.cos(lat * D2R);
-    const skip = Math.max(1, Math.round(0.6 / Math.max(cosLat, 0.05)));
-    const m = (lat + 90) % GRATICULE;
-    const onParallel = m < STEP_LAT / 2 || GRATICULE - m < STEP_LAT / 2;
-    for (let col = 0; col < COLS; col += skip) {
-      const lon = colLon(col);
-      const onMeridian = Math.abs(lon % GRATICULE) < STEP_LON / 2;
-      pts.push({
-        sinLat: Math.sin(lat * D2R),
-        cosLat,
-        col,
-        glyph: isLand(lon, lat) ? glyphFor(lon, lat) : "",
-        grat: onMeridian || onParallel,
+    const n = Math.max(1, Math.round(360 * cosLat / STEP));
+    for (let i = 0; i < n; i++) {
+      const lon = -180 + ((i + (Math.round(lat / STEP) % 2) * 0.5) / n) * 360;
+      if (!isLand(lon, lat)) continue;
+      dots.push({
+        x: cosLat * Math.sin(lon * D2R),
+        y: Math.sin(lat * D2R),
+        z: cosLat * Math.cos(lon * D2R),
+        shade: 0.45 + rnd() * 0.55,
+        tw: rnd() * Math.PI * 2,
       });
     }
   }
-  return Promise.resolve(pts);
+  return dots;
 }
 
-function project(lat: number, lon: number, lon0: number, lat0: number) {
-  const phi = lat * D2R;
-  const dl = ((((lon - lon0 + 540) % 360) - 180) * LON_K) * D2R;
-  const p0 = lat0 * D2R;
-  return {
-    x: Math.cos(phi) * Math.sin(dl),
-    y: Math.cos(p0) * Math.sin(phi) - Math.sin(p0) * Math.cos(phi) * Math.cos(dl),
-    z: Math.sin(p0) * Math.sin(phi) + Math.cos(p0) * Math.cos(phi) * Math.cos(dl),
-  };
-}
+const vec = (lat: number, lon: number): [number, number, number] => [
+  Math.cos(lat * D2R) * Math.sin(lon * D2R),
+  Math.sin(lat * D2R),
+  Math.cos(lat * D2R) * Math.cos(lon * D2R),
+];
 
 export default function Globe({ events }: { events: TribeEvent[] }) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -97,73 +88,184 @@ export default function Globe({ events }: { events: TribeEvent[] }) {
     const panel = wrap.parentElement!;
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext("2d")!;
-    let pts: Pt[] = [];
+    let dots: Dot[] = [];
     let size = 0;
     let dpr = 1;
     const view = { ...START };
-    let velocity = 0; // current spin, deg/s
+    let velocity = 0;
     let hovering = false;
     let pinHover = false;
     let dragging = false;
-    let dirty = true;
     let raf = 0;
     let last = performance.now();
     let alive = true;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const eventVecs = events.map((e) => vec(e.lat, e.lon));
+    const hubVecs = HUBS.map(([la, lo]) => vec(la, lo));
 
     const resize = () => {
       size = wrap.clientWidth;
       dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = canvas.height = Math.round(size * dpr);
-      dirty = true;
     };
 
-    const draw = () => {
-      const R = size / 2;
+    // rotate a world-space unit vector into view space (x right, y up, z towards viewer)
+    let cosL = 1, sinL = 0, cosT = 1, sinT = 0;
+    const toView = (v: [number, number, number]): [number, number, number] => {
+      const X = v[0] * cosL - v[2] * sinL;
+      const Z = v[0] * sinL + v[2] * cosL;
+      return [X, cosT * v[1] - sinT * Z, sinT * v[1] + cosT * Z];
+    };
+
+    const rgba = (c: number[], a: number) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+    const draw = (t: number) => {
+      const C = size / 2;
+      const R = size * 0.46; // sphere radius; the margin leaves room for the outer bloom
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, size, size);
-      // frosted disc so the code texture reads as sitting behind the globe
-      ctx.fillStyle = "rgba(243, 243, 243, 0.4)";
+      cosL = Math.cos(view.lon * D2R);
+      sinL = Math.sin(view.lon * D2R);
+      cosT = Math.cos(view.lat * D2R);
+      sinT = Math.sin(view.lat * D2R);
+
+      // soft outer bloom
+      let g = ctx.createRadialGradient(C, C, R * 0.97, C, C, R * 1.09);
+      g.addColorStop(0, rgba(VERM, 0.62));
+      g.addColorStop(0.35, rgba(VERM, 0.24));
+      g.addColorStop(1, rgba(VERM, 0));
+      ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(R, R, R, 0, Math.PI * 2);
+      ctx.arc(C, C, R * 1.09, 0, Math.PI * 2);
       ctx.fill();
-      const sl0 = Math.sin(view.lat * D2R);
-      const cl0 = Math.cos(view.lat * D2R);
-      for (let c = 0; c < COLS; c++) {
-        const th = ((((colLon(c) - view.lon + 540) % 360) - 180) * LON_K) * D2R;
-        colSin[c] = Math.sin(th);
-        colCos[c] = Math.cos(th);
-      }
-      const glyphPx = size * 0.0165;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = "#1e1e1e";
-      for (const p of pts) {
-        const cosD = colCos[p.col];
-        const sinD = colSin[p.col];
-        const z = sl0 * p.sinLat + cl0 * p.cosLat * cosD;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(C, C, R, 0, Math.PI * 2);
+      ctx.clip();
+
+      // sphere body
+      g = ctx.createRadialGradient(C, C - R * 0.38, 0, C, C, R);
+      g.addColorStop(0, "#26191a");
+      g.addColorStop(0.55, "#170f0f");
+      g.addColorStop(1, "#0e0808");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, size, size);
+
+      // dot-matrix land
+      for (const d of dots) {
+        const X = d.x * cosL - d.z * sinL;
+        const Z0 = d.x * sinL + d.z * cosL;
+        const z = sinT * d.y + cosT * Z0;
         if (z <= 0.02) continue;
-        const x = R + R * p.cosLat * sinD;
-        const y = R - R * (cl0 * p.sinLat - sl0 * p.cosLat * cosD);
-        const fall = Math.pow(z, 0.6);
-        if (p.glyph) {
-          ctx.globalAlpha = 0.42 * fall;
-          ctx.font = `500 ${glyphPx * (0.55 + 0.45 * fall)}px ui-monospace, Menlo, Consolas, monospace`;
-          ctx.fillText(p.glyph, x, y);
-        } else {
-          ctx.globalAlpha = (p.grat ? 0.34 : 0.14) * fall;
-          const s = p.grat ? 1.6 : 1.1;
-          ctx.fillRect(x - s / 2, y - s / 2, s, s);
-        }
+        const y = cosT * d.y - sinT * Z0;
+        const tw = 0.85 + 0.15 * Math.sin(t * 0.0015 + d.tw);
+        const k = Math.pow(z, 0.55);
+        const col = [
+          VERM_LIGHT[0] + (CREAM[0] - VERM_LIGHT[0]) * z,
+          VERM_LIGHT[1] + (CREAM[1] - VERM_LIGHT[1]) * z,
+          VERM_LIGHT[2] + (CREAM[2] - VERM_LIGHT[2]) * z,
+        ].map(Math.round);
+        ctx.fillStyle = rgba(col, Math.min(0.95, 1.0 * d.shade * k * tw));
+        ctx.beginPath();
+        ctx.arc(C + R * X, C - R * y, Math.max(0.6, size * 0.0031 * (0.35 + 0.65 * z)), 0, Math.PI * 2);
+        ctx.fill();
       }
-      ctx.globalAlpha = 1;
+
+      // glowing hubs
+      ctx.globalCompositeOperation = "lighter";
+      hubVecs.forEach((v, i) => {
+        const [x, y, z] = toView(v);
+        if (z <= 0.1) return;
+        const pulse = 0.65 + 0.35 * Math.sin(t * 0.0018 + i * 1.7);
+        const r = R * 0.05 * (0.5 + 0.5 * z);
+        const hg = ctx.createRadialGradient(C + R * x, C - R * y, 0, C + R * x, C - R * y, r);
+        hg.addColorStop(0, rgba(VERM_LIGHT, 0.55 * pulse * z));
+        hg.addColorStop(1, rgba(VERM, 0));
+        ctx.fillStyle = hg;
+        ctx.fillRect(C + R * x - r, C - R * y - r, r * 2, r * 2);
+      });
+
+      // arcs between event pins with a travelling head
+      ARCS.forEach(([a, b], ai) => {
+        const A = eventVecs[a];
+        const B = eventVecs[b];
+        if (!A || !B) return;
+        const dot = Math.max(-1, Math.min(1, A[0] * B[0] + A[1] * B[1] + A[2] * B[2]));
+        const om = Math.acos(dot);
+        const so = Math.sin(om) || 1;
+        const N = 48;
+        const head = ((t * 0.00012 + ai * 0.5) % 1) * 1.3;
+        let prev: [number, number, number] | null = null;
+        for (let i = 0; i <= N; i++) {
+          const s = i / N;
+          const w1 = Math.sin((1 - s) * om) / so;
+          const w2 = Math.sin(s * om) / so;
+          const lift = 1 + 0.16 * Math.sin(Math.PI * s);
+          const p = toView([
+            (A[0] * w1 + B[0] * w2) * lift,
+            (A[1] * w1 + B[1] * w2) * lift,
+            (A[2] * w1 + B[2] * w2) * lift,
+          ]);
+          if (prev && p[2] > 0.05 && prev[2] > 0.05) {
+            const trail = Math.max(0, 1 - (head - s) / 0.35);
+            const near = s <= head ? trail : 0;
+            ctx.strokeStyle = rgba(VERM_LIGHT, 0.18 + 0.75 * near);
+            ctx.lineWidth = size * (0.0012 + 0.0016 * near);
+            ctx.beginPath();
+            ctx.moveTo(C + R * prev[0], C - R * prev[1]);
+            ctx.lineTo(C + R * p[0], C - R * p[1]);
+            ctx.stroke();
+          }
+          prev = p;
+        }
+        const hs = Math.min(1, head);
+        const w1 = Math.sin((1 - hs) * om) / so;
+        const w2 = Math.sin(hs * om) / so;
+        const lift = 1 + 0.16 * Math.sin(Math.PI * hs);
+        const hp = toView([
+          (A[0] * w1 + B[0] * w2) * lift,
+          (A[1] * w1 + B[1] * w2) * lift,
+          (A[2] * w1 + B[2] * w2) * lift,
+        ]);
+        if (head <= 1 && hp[2] > 0.05) {
+          const r = R * 0.03;
+          const hg = ctx.createRadialGradient(C + R * hp[0], C - R * hp[1], 0, C + R * hp[0], C - R * hp[1], r);
+          hg.addColorStop(0, "rgba(255,240,232,0.95)");
+          hg.addColorStop(0.3, rgba(VERM_LIGHT, 0.6));
+          hg.addColorStop(1, rgba(VERM, 0));
+          ctx.fillStyle = hg;
+          ctx.fillRect(C + R * hp[0] - r, C - R * hp[1] - r, r * 2, r * 2);
+        }
+      });
+      ctx.globalCompositeOperation = "source-over";
+
+      // fresnel rim: wide inner glow + bright edge line
+      g = ctx.createRadialGradient(C, C, R * 0.66, C, C, R);
+      g.addColorStop(0, rgba(VERM, 0));
+      g.addColorStop(0.5, rgba(VERM, 0.3));
+      g.addColorStop(0.82, rgba(VERM, 0.82));
+      g.addColorStop(0.965, rgba(VERM_LIGHT, 0.95));
+      g.addColorStop(1, "rgba(255,238,230,1)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, size, size);
+
+      // brighter on the upper-left, like the key light in the reference
+      g = ctx.createRadialGradient(C - R * 0.45, C - R * 0.75, 0, C - R * 0.45, C - R * 0.75, R * 0.9);
+      g.addColorStop(0, "rgba(255,200,180,0.22)");
+      g.addColorStop(1, "rgba(255,200,180,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, size, size);
+      ctx.restore();
 
       events.forEach((ev, i) => {
         const el = pinRefs.current[i];
         if (!el) return;
-        const q = project(ev.lat, ev.lon, view.lon, view.lat);
-        const visible = q.z > 0.08;
-        el.style.transform = `translate(${R + R * q.x}px, ${R - R * q.y}px)`;
-        el.style.opacity = visible ? String(Math.min(1, (q.z - 0.08) * 6)) : "0";
+        const [x, y, z] = toView(eventVecs[i]);
+        const visible = z > 0.08;
+        el.style.transform = `translate(${C + R * x}px, ${C - R * y}px)`;
+        el.style.opacity = visible ? String(Math.min(1, (z - 0.08) * 6)) : "0";
         el.style.pointerEvents = visible ? "auto" : "none";
       });
     };
@@ -174,14 +276,8 @@ export default function Globe({ events }: { events: TribeEvent[] }) {
       last = now;
       const target = hovering && !pinHover && !dragging ? SPIN : 0;
       velocity += (target - velocity) * Math.min(1, dt * 3);
-      if (Math.abs(velocity) > 0.02) {
-        view.lon = (view.lon + velocity * dt + 540) % 360 - 180;
-        dirty = true;
-      }
-      if (dirty) {
-        draw();
-        dirty = false;
-      }
+      if (Math.abs(velocity) > 0.02) view.lon = ((view.lon + velocity * dt + 540) % 360) - 180;
+      draw(reduced ? 0 : now);
       raf = requestAnimationFrame(tick);
     };
 
@@ -200,11 +296,10 @@ export default function Globe({ events }: { events: TribeEvent[] }) {
       if (!dragging) return;
       const k = 180 / size;
       view.lon = ((view.lon - (e.clientX - dragX) * k + 540) % 360) - 180;
-      view.lat = Math.max(-60, Math.min(60, view.lat + (e.clientY - dragY) * k));
+      view.lat = Math.max(-60, Math.min(70, view.lat + (e.clientY - dragY) * k));
       dragX = e.clientX;
       dragY = e.clientY;
       velocity = 0;
-      dirty = true;
     };
     const onUp = () => (dragging = false);
 
@@ -226,10 +321,7 @@ export default function Globe({ events }: { events: TribeEvent[] }) {
     ro.observe(wrap);
     resize();
 
-    buildLattice().then((p) => {
-      pts = p;
-      dirty = true;
-    });
+    dots = buildDots();
     raf = requestAnimationFrame(tick);
 
     return () => {
