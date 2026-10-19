@@ -140,6 +140,7 @@
 }
 .texture__tile {
   display: block;
+  margin-left: calc(-150 * var(--u)); /* rows run edge to edge: start them off-panel */
   width: calc(517 * 3 * var(--u));
   height: calc(467 * 3 * var(--u));
   user-select: none;

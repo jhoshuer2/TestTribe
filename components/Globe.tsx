@@ -121,6 +121,11 @@ export default function Globe({ events }: { events: TribeEvent[] }) {
       const R = size / 2;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, size, size);
+      // frosted disc so the code texture reads as sitting behind the globe
+      ctx.fillStyle = "rgba(243, 243, 243, 0.4)";
+      ctx.beginPath();
+      ctx.arc(R, R, R, 0, Math.PI * 2);
+      ctx.fill();
       const sl0 = Math.sin(view.lat * D2R);
       const cl0 = Math.cos(view.lat * D2R);
       for (let c = 0; c < COLS; c++) {
