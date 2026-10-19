@@ -11,8 +11,8 @@ const SECTIONS = [
 ];
 
 // Preloader timeline (ms). Durations live in styles/hero.css (--t-move, --t-reveal).
-const HOLD = 2400;
-const READY = HOLD + 3600 + 2200;
+const HOLD = 1200;
+const READY = HOLD + 1500 + 1300;
 
 export default function Hero() {
   const [phase, setPhase] = useState<"intro" | "move" | "ready">("intro");

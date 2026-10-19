@@ -29,9 +29,9 @@
 
   /* motion */
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --t-intro: 1s;
-  --t-move: 3.6s;
-  --t-reveal: 1.4s;
+  --t-intro: 0.7s;
+  --t-move: 1.5s;
+  --t-reveal: 0.8s;
 }
 
 * {
